@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=62.3.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sim_demo_collector"
+version = "0.0.1"
+description = "Expert demonstration collector in simulation"
+authors = [
+    { name = "Junlin Wang", email = "wangjl@seas.upenn.edu" }
+]
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+
+dependencies = [
+    "zarr==2.17.0",
+    "numpy==1.26.4",
+    "scipy==1.15.1",
+    "torch==2.2.0",
+    "torchvision==0.17.0",
+    "diffusers==0.27.2",
+    "tqdm==4.67.1",
+    "hydra-core==1.2.0",
+    "omegaconf==2.3.0",
+    "einops==0.8.0",
+    "numba==0.61.0",
+    "gymnasium==1.0.0",
+    "robosuite==1.4.0",
+    "robomimic==0.2.0"
+]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["sim_demo_collector*"]
