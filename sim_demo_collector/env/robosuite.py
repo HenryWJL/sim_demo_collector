@@ -1,8 +1,12 @@
 import numpy as np
 import robosuite as suite
-from robosuite.controllers import load_controller_config
-from robosuite.utils.camera_utils import get_camera_intrinsic_matrix, get_real_depth_map
 from typing import Optional, Union, Tuple, Literal, List, Dict
+from robosuite.controllers import load_controller_config
+from robosuite.utils.camera_utils import (
+    get_real_depth_map,
+    get_camera_intrinsic_matrix,
+    get_camera_extrinsic_matrix
+)
 from sim_demo_collector.util.pcd_util import depth2pcd
 
 
@@ -72,6 +76,7 @@ class RobosuiteEnv:
         # ================================================================= #
         # ======================= Renderer Settings ======================= #
         # ================================================================= #
+        self.render_mode = render_mode
         self.render_camera = render_camera
         self.render_image_size = render_image_size
         env_kwargs['has_renderer'] = render_mode == "human"
@@ -87,8 +92,6 @@ class RobosuiteEnv:
             seg_mask (np.ndarray): binary segmentation masks where
                 1 for pixels occupied by the robot and 0 otherwise.
         """
-        if len(seg_image.shape) == 3:
-            seg_image = seg_image.squeeze(-1)
         arm_geom_names = self.env.robots[0].robot_model.visual_geoms
         gripper_geom_names = self.env.robots[0].gripper.visual_geoms
         robot_geom_names = arm_geom_names + gripper_geom_names
@@ -96,22 +99,52 @@ class RobosuiteEnv:
         seg_mask = np.isin(seg_image, robot_geom_ids).astype(np.uint8)
         return seg_mask
 
-    def get_obs(self, raw_obs: Dict) -> Dict:
+    def _extract_obs(self, raw_obs: Dict) -> Dict:
         obs = {}
-        for key in self.obs_keys:
-            robosuite_key = key
-            # Robomimic treats 'object-state' as 'object', and so does Diffusion Policy
-            if key == 'object':
-                robosuite_key = 'object-state'
-            assert robosuite_key in raw_obs, f"Key {key} not found in observation {raw_obs.keys()}"
-            obs[key] = np.array(raw_obs[robosuite_key])
+        for key in raw_obs.keys():
+            if key.endswith("image"):
+                # By default MuJoCo returns vertically flipped images
+                obs[key] = raw_obs[key][::-1].copy()
+            elif key.endswith("depth"):
+                # By default MuJoCo returns vertically flipped images
+                # By default MuJoCo returns normalized depth values
+                obs[key] = get_real_depth_map(self.env.sim, raw_obs[key][::-1].copy())
+            elif key.endswith("segmentation_element"):
+                # By default MuJoCo returns vertically flipped images
+                seg_mask = self._extract_seg_mask(raw_obs[key][::-1].copy())
+                obs[key.replace("segmentation_element", "mask")] = seg_mask
+            else:
+                obs[key] = raw_obs[key].copy()
+        return obs
 
     def reset(self) -> Dict:
         obs = self.env.reset()
         return self._extract_obs(obs)
     
-    def get_camera_intrinsics(self, camera: str) -> np.ndarray:
-        """Return the intrinsic matrix of @camera"""
+    def step(self, action: np.ndarray) -> Tuple:
+        obs, reward, _, info = self.env.step(action)
+        return self._extract_obs(obs), reward, False, info
+
+    def render(self) -> None:
+        """Render from simulation to either an on-screen window or off-screen to RGB array."""
+        if self.render_mode == "human":
+            cam_id = self.env.sim.model.camera_name2id(self.render_camera)
+            self.env.viewer.set_camera(cam_id)
+            return self.env.render()
+        elif self.render_mode == "rgb_array":
+            image = self.env.sim.render(*self.render_image_size, self.render_camera)
+            return image[::-1]
+    
+    def get_camera_intrinsic_matrix(self, camera_name: str) -> np.ndarray:
+        """Return the intrinsic matrix of @camera_name."""
         return get_camera_intrinsic_matrix(
-            self.env.sim, camera, *self.image_size
+            self.env.sim, camera_name, *self.image_size
         )
+    
+    def get_camera_extrinsic_matrix(self, camera_name: str) -> np.ndarray:
+        """Return the extrinsic matrix of @camera_name in the world frame."""
+        return get_camera_extrinsic_matrix(self.env.sim, camera_name)
+    
+    def is_success(self) -> bool:
+        """Check if the task is successfully done"""
+        return self.env._check_success()
