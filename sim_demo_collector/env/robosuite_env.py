@@ -26,7 +26,7 @@ class RobosuiteEnv:
         controller: Optional[str] = "OSC_POSE",
         delta_action: Optional[bool] = False,
         control_freq: Optional[int] = 20,
-        render_mode: Literal["human", "rgb_array"] = "human",
+        render_mode: Literal["human", "rgb_array"] = "rgb_array",
         render_camera: Optional[str] = "agentview",
         render_image_size: Optional[Tuple[int, int]] = (256, 256)
     ) -> None:
@@ -187,7 +187,14 @@ class RobosuiteEnv3D(RobosuiteEnv):
 
 
 def test():
-    pass
+    env = RobosuiteEnv(
+        env_name="Lift",
+        robots="Panda",
+        use_image_obs=True,
+        use_depth_obs=True,
+        use_mask_obs=True
+    )
+    obs = env.reset()
 
     
 if __name__ == "__main__":
