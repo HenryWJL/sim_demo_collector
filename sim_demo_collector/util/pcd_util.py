@@ -5,7 +5,7 @@ from typing import Optional, Tuple, Dict, Union
 
 def depth2pcd(
     depth: np.ndarray,
-    intrinsic_matrix: np.ndarray,
+    camera_intrinsic_matrix: np.ndarray,
     bounding_box: Optional[Dict] = None,
     seg_mask: Optional[np.ndarray] = None
 ) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
@@ -16,11 +16,13 @@ def depth2pcd(
         'z': (0, 5)
     }
     """
+    if len(depth.shape) == 3:
+        depth = depth.squeeze(-1)
     height, width = depth.shape
-    fx = intrinsic_matrix[0, 0]
-    fy = intrinsic_matrix[1, 1]
-    cx = intrinsic_matrix[0, 2]
-    cy = intrinsic_matrix[1, 2]
+    fx = camera_intrinsic_matrix[0, 0]
+    fy = camera_intrinsic_matrix[1, 1]
+    cx = camera_intrinsic_matrix[0, 2]
+    cy = camera_intrinsic_matrix[1, 2]
     u, v = np.meshgrid(np.arange(width), np.arange(height))
     z = depth
     x = (u - cx) / fx * z
@@ -39,6 +41,8 @@ def depth2pcd(
         )
     pcd = pcd[bb_mask]
     if seg_mask is not None:
+        if len(seg_mask.shape) == 3:
+            seg_mask = seg_mask.squeeze(-1)
         seg_mask = seg_mask[bb_mask]
         return pcd, seg_mask
     else:

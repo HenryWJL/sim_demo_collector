@@ -9,7 +9,7 @@ from robosuite.utils.camera_utils import (
 )
 from sim_demo_collector.util.pcd_util import depth2pcd
 
-
+# Adapted from https://github.com/ARISE-Initiative/robomimic/blob/master/robomimic/envs/env_robosuite.py
 class RobosuiteEnv:
 
     CAMERA_NAMES = ["agentview", "frontview", "robot0_eye_in_hand"]
@@ -31,17 +31,17 @@ class RobosuiteEnv:
         render_image_size: Optional[Tuple[int, int]] = (256, 256)
     ) -> None:
         """
-        A gym wrapper for Robosuite.
+        Wrapper class for Robosuite (https://robosuite.ai/docs/overview.html).
 
         Args:
-            env_name (str): Robosuite environment (see official documentation).
-            robots (str or list): Robot name(s) (see official documentation).
+            env_name (str): Robosuite environment (https://robosuite.ai/docs/modules/environments.html).
+            robots (str or list): Robot name(s) (https://robosuite.ai/docs/modules/robots.html).
             use_object_obs (bool): If True, returns object states.
             use_image_obs (bool): If True, returns camera observations.
             use_depth_obs (bool): If True, returns depth observations.
             use_mask_obs (bool): If True, returns binary robot masks.
             image_size (tuple): height and width of returned images.
-            controller (str): Controller type (see official documentation).
+            controller (str): Controller type (https://robosuite.ai/docs/modules/controllers.html).
             delta_action (bool): If True, uses delta action control.
             control_freq (int): control frequency.
             render_mode (str): "human" or "rgb_array". If "human", opens a
@@ -120,7 +120,7 @@ class RobosuiteEnv:
     def reset(self) -> Dict:
         obs = self.env.reset()
         return self._extract_obs(obs)
-    
+
     def step(self, action: np.ndarray) -> Tuple:
         obs, reward, _, info = self.env.step(action)
         return self._extract_obs(obs), reward, False, info
@@ -134,17 +134,61 @@ class RobosuiteEnv:
         elif self.render_mode == "rgb_array":
             image = self.env.sim.render(*self.render_image_size, self.render_camera)
             return image[::-1]
-    
+
     def get_camera_intrinsic_matrix(self, camera_name: str) -> np.ndarray:
         """Return the intrinsic matrix of @camera_name."""
         return get_camera_intrinsic_matrix(
             self.env.sim, camera_name, *self.image_size
         )
-    
+
     def get_camera_extrinsic_matrix(self, camera_name: str) -> np.ndarray:
         """Return the extrinsic matrix of @camera_name in the world frame."""
         return get_camera_extrinsic_matrix(self.env.sim, camera_name)
-    
+
     def is_success(self) -> bool:
         """Check if the task is successfully done"""
         return self.env._check_success()
+
+
+class RobosuiteEnv3D(RobosuiteEnv):
+
+    def __init__(
+        self,
+        use_point_cloud_obs: Optional[bool] = False,
+        bounding_boxes: Optional[Dict] = None,
+        **kwargs
+    ) -> None:
+        """
+        Args:
+            use_point_cloud_obs (bool): If True, returns point cloud observations.
+            bounding_boxes (dict): Per-camera bounding boxes of the point clouds.
+        """
+        if use_point_cloud_obs:
+            assert kwargs.get('use_image_obs') and kwargs.get('use_depth_obs')
+        super().__init__(**kwargs)
+        self.use_point_cloud_obs = use_point_cloud_obs
+        self.bounding_boxes = bounding_boxes
+        
+    def _extract_obs(self, raw_obs: Dict) -> Dict:
+        obs = super()._extract_obs(raw_obs)
+        if self.use_point_cloud_obs:
+            for camera_name in self.CAMERA_NAMES:
+                # By default the camera intrinsic matrix computed from
+                # MuJoCo’s camera parameters already assumes image flip.
+                cam_intrin_mat = super().get_camera_intrinsic_matrix(camera_name)
+                point_cloud = depth2pcd(
+                    depth=obs[f'{camera_name}_depth'][::-1].copy(),
+                    camera_intrinsic_matrix=cam_intrin_mat,
+                    bounding_box=self.bounding_boxes.get(camera_name),
+                    seg_mask=obs[f'{camera_name}_mask'][::-1].copy()
+                )
+                obs[f'{camera_name}_point_cloud'] = point_cloud
+        return obs
+
+
+def test():
+    pass
+
+    
+if __name__ == "__main__":
+    test()
