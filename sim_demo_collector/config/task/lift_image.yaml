@@ -1,0 +1,20 @@
+defaults:
+  - _self_
+  - env: robosuite
+
+name: Lift
+
+
+cameras:
+  frontview:
+    bounding_box:
+      x: [-0.5, 0.5]
+      y: [-0.4, 2]
+      z: [1, 2.35]
+  robot0_eye_in_hand:
+    bounding_box:
+      x: [-0.5, 0.5]
+      y: [-0.5, 0.5]
+      z: [0, 0.5]
+num_episodes: 50
+max_episode_steps: 100
