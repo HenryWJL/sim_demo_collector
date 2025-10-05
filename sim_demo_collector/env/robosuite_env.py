@@ -190,7 +190,7 @@ class RobosuiteEnv3D(RobosuiteEnv):
         self,
         use_pcd_obs: Optional[bool] = False,
         num_points: Optional[int] = 512,
-        bounding_boxes: Optional[Dict] = None,
+        bounding_boxes: Optional[Dict] = dict(),
         **kwargs
     ) -> None:
         """
@@ -227,3 +227,53 @@ class RobosuiteEnv3D(RobosuiteEnv):
                 if seg_mask is not None:
                     obs[f'{camera_name}_pcd_mask'] = seg_mask[fps_idx]
         return obs
+    
+
+def test():
+    import matplotlib.pyplot as plt
+    import open3d as o3d
+
+    env = RobosuiteEnv3D(
+        env_name="Lift",
+        robots="Panda",
+        use_object_obs=True,
+        use_image_obs=True,
+        use_depth_obs=True,
+        use_pcd_obs=True,
+        use_mask_obs=True,
+    )
+    obs = env.reset()
+
+    camera_name = "frontview"
+    image = obs[f'{camera_name}_image']
+    depth = obs[f'{camera_name}_depth']
+    image_mask = obs[f'{camera_name}_image_mask']
+    pcd = obs[f'{camera_name}_pcd']
+    pcd_mask = obs[f'{camera_name}_pcd_mask']
+
+    # Visualize images
+    _, axs = plt.subplots(1, 3, figsize=(12, 4))
+
+    axs[0].imshow(image)
+    axs[0].set_title("RGB Image")
+    axs[0].axis("off")
+
+    axs[1].imshow(depth, cmap="plasma")
+    axs[1].set_title("Depth Map")
+    axs[1].axis("off")
+
+    axs[2].imshow(image_mask, cmap="tab20")
+    axs[2].set_title("Segmentation Mask")
+    axs[2].axis("off")
+
+    plt.tight_layout()
+    plt.show()
+
+    # Visualize point clouds
+    pcd_o3d = o3d.geometry.PointCloud()
+    pcd_o3d.points = o3d.utility.Vector3dVector(pcd)
+    colors = np.zeros_like(pcd)
+    colors[pcd_mask == 1] = [1, 0, 0]   # red = robot
+    colors[pcd_mask == 0] = [0, 1, 0]   # green = environment
+    pcd_o3d.colors = o3d.utility.Vector3dVector(colors)
+    o3d.visualization.draw_geometries([pcd_o3d])
