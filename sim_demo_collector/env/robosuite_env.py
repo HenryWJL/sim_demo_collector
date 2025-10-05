@@ -212,13 +212,18 @@ class RobosuiteEnv3D(RobosuiteEnv):
                 # By default the camera intrinsic matrix computed from
                 # MuJoCo’s camera parameters already assumes image flip.
                 cam_intrin_mat = super().get_camera_intrinsic_matrix(camera_name)
+                depth = obs[f'{camera_name}_depth'][::-1].copy()
+                seg_mask = obs.get(f'{camera_name}_image_mask')
+                if seg_mask is not None:
+                    seg_mask = seg_mask[::-1].copy()
                 point_cloud, seg_mask = depth2pcd(
-                    depth=obs[f'{camera_name}_depth'][::-1].copy(),
+                    depth=depth,
                     camera_intrinsic_matrix=cam_intrin_mat,
                     bounding_box=self.bounding_boxes.get(camera_name),
-                    seg_mask=obs[f'{camera_name}_image_mask'][::-1].copy()
+                    seg_mask=seg_mask
                 )
                 fps_idx = fpsample.bucket_fps_kdline_sampling(point_cloud, self.num_points, h=3)
                 obs[f'{camera_name}_pcd'] = point_cloud[fps_idx]
-                obs[f'{camera_name}_pcd_mask'] = seg_mask[fps_idx]
+                if seg_mask is not None:
+                    obs[f'{camera_name}_pcd_mask'] = seg_mask[fps_idx]
         return obs

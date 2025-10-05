@@ -44,9 +44,7 @@ def depth2pcd(
         if len(seg_mask.shape) == 3:
             seg_mask = seg_mask.squeeze(-1)
         seg_mask = seg_mask[bb_mask]
-        return pcd, seg_mask
-    else:
-        return pcd
+    return pcd, seg_mask
     
 
 def save_open3d_pcd(

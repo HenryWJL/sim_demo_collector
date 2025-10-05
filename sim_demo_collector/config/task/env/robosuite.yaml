@@ -1,21 +1,14 @@
 _target_: sim_demo_collector.env.robosuite.RobosuiteEnv
 env_name: ${task.name}
 robots: Panda
-camera_names:
-  - agentview
-  - robot0_eye_in_hand
-obs_modalities:
-  - low_dims
-  - rgb
-  - depth
-  - point_cloud
-  - rgb_mask
-  - pcd_mask
+use_object_obs: false
+use_image_obs: true
+use_depth_obs: false
+use_mask_obs: false
 image_size: [84, 84]
-num_points: ${task.num_points}
-bounding_boxes: ${task.bounding_boxes}
 controller: OSC_POSE
-delta_action: true
+delta_action: false
 control_freq: 20
 render_mode: rgb_array
 render_camera: agentview
+render_image_size: [256, 256]
