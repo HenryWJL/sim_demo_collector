@@ -1,3 +1,4 @@
+import fpsample
 import numpy as np
 import open3d as o3d
 import robosuite as suite
@@ -105,6 +106,9 @@ for i in range(5):
             env.sim, camera_name, H, W
         )
         pcd, seg_mask = depth2pcd(depth, intrinsic_matrix, bounding_boxes[camera_name], seg_mask)
+        idx = fpsample.bucket_fps_kdline_sampling(pcd, 512, h=3)
+        pcd = pcd[idx]
+        seg_mask = seg_mask[idx]
         pcds[camera_name].append(pcd)
         seg_masks[camera_name].append(seg_mask)
 
