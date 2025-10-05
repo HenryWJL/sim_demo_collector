@@ -1,4 +1,4 @@
-import json
+import fpsample
 import numpy as np
 import robosuite as suite
 from typing import Optional, Union, Tuple, Literal, List, Dict
@@ -189,6 +189,7 @@ class RobosuiteEnv3D(RobosuiteEnv):
     def __init__(
         self,
         use_pcd_obs: Optional[bool] = False,
+        num_points: Optional[int] = 512,
         bounding_boxes: Optional[Dict] = None,
         **kwargs
     ) -> None:
@@ -201,6 +202,7 @@ class RobosuiteEnv3D(RobosuiteEnv):
             assert kwargs.get('use_image_obs') and kwargs.get('use_depth_obs')
         super().__init__(**kwargs)
         self.use_pcd_obs = use_pcd_obs
+        self.num_points = num_points
         self.bounding_boxes = bounding_boxes
         
     def _extract_obs(self, raw_obs: Dict) -> Dict:
@@ -216,6 +218,7 @@ class RobosuiteEnv3D(RobosuiteEnv):
                     bounding_box=self.bounding_boxes.get(camera_name),
                     seg_mask=obs[f'{camera_name}_image_mask'][::-1].copy()
                 )
-                obs[f'{camera_name}_pcd'] = point_cloud
-                obs[f'{camera_name}_pcd_mask'] = seg_mask
+                fps_idx = fpsample.bucket_fps_kdline_sampling(point_cloud, self.num_points, h=3)
+                obs[f'{camera_name}_pcd'] = point_cloud[fps_idx]
+                obs[f'{camera_name}_pcd_mask'] = seg_mask[fps_idx]
         return obs
