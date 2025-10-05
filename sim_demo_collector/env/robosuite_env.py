@@ -1,3 +1,4 @@
+import json
 import numpy as np
 import robosuite as suite
 from typing import Optional, Union, Tuple, Literal, List, Dict
@@ -112,7 +113,7 @@ class RobosuiteEnv:
             elif key.endswith("segmentation_element"):
                 # By default MuJoCo returns vertically flipped images
                 seg_mask = self._extract_seg_mask(raw_obs[key][::-1].copy())
-                obs[key.replace("segmentation_element", "mask")] = seg_mask
+                obs[key.replace("segmentation_element", "image_mask")] = seg_mask
             else:
                 obs[key] = raw_obs[key].copy()
         return obs
@@ -120,6 +121,35 @@ class RobosuiteEnv:
     def reset(self) -> Dict:
         obs = self.env.reset()
         return self._extract_obs(obs)
+    
+    def reset_to(self, state: Dict) -> Dict:
+        """
+        Reset to a specific simulator state.
+
+        Args:
+            state (dict): current simulator state that contains one or more of:
+                - states (np.ndarray): initial state of the mujoco environment.
+                - model (str): mujoco scene xml.
+        
+        Returns:
+            obs (dict): observation dictionary after setting the simulator
+                state (only if "states" is in @state).
+        """
+        should_ret = False
+        if "model" in state:
+            self.reset(unset_ep_meta=False)
+            xml = self.env.edit_model_xml(state["model"])
+            self.env.reset_from_xml_string(xml)
+            self.env.sim.reset()
+        if "states" in state:
+            self.env.sim.set_state_from_flattened(state["states"])
+            self.env.sim.forward()
+            should_ret = True
+        if "goal" in state:
+            self.env.set_goal(**state["goal"])
+        if should_ret:
+            return self._extract_obs(self.env._get_observations(force_update=True))
+        return None
 
     def step(self, action: np.ndarray) -> Tuple:
         obs, reward, _, info = self.env.step(action)
@@ -132,7 +162,11 @@ class RobosuiteEnv:
             self.env.viewer.set_camera(cam_id)
             return self.env.render()
         elif self.render_mode == "rgb_array":
-            image = self.env.sim.render(*self.render_image_size, self.render_camera)
+            image = self.env.sim.render(
+                height=self.render_image_size[0],
+                width=self.render_image_size[1],
+                camera_name=self.render_camera
+            )
             return image[::-1]
 
     def get_camera_intrinsic_matrix(self, camera_name: str) -> np.ndarray:
@@ -154,48 +188,34 @@ class RobosuiteEnv3D(RobosuiteEnv):
 
     def __init__(
         self,
-        use_point_cloud_obs: Optional[bool] = False,
+        use_pcd_obs: Optional[bool] = False,
         bounding_boxes: Optional[Dict] = None,
         **kwargs
     ) -> None:
         """
         Args:
-            use_point_cloud_obs (bool): If True, returns point cloud observations.
+            use_pcd_obs (bool): If True, returns point cloud observations.
             bounding_boxes (dict): Per-camera bounding boxes of the point clouds.
         """
-        if use_point_cloud_obs:
+        if use_pcd_obs:
             assert kwargs.get('use_image_obs') and kwargs.get('use_depth_obs')
         super().__init__(**kwargs)
-        self.use_point_cloud_obs = use_point_cloud_obs
+        self.use_pcd_obs = use_pcd_obs
         self.bounding_boxes = bounding_boxes
         
     def _extract_obs(self, raw_obs: Dict) -> Dict:
         obs = super()._extract_obs(raw_obs)
-        if self.use_point_cloud_obs:
+        if self.use_pcd_obs:
             for camera_name in self.CAMERA_NAMES:
                 # By default the camera intrinsic matrix computed from
                 # MuJoCo’s camera parameters already assumes image flip.
                 cam_intrin_mat = super().get_camera_intrinsic_matrix(camera_name)
-                point_cloud = depth2pcd(
+                point_cloud, seg_mask = depth2pcd(
                     depth=obs[f'{camera_name}_depth'][::-1].copy(),
                     camera_intrinsic_matrix=cam_intrin_mat,
                     bounding_box=self.bounding_boxes.get(camera_name),
-                    seg_mask=obs[f'{camera_name}_mask'][::-1].copy()
+                    seg_mask=obs[f'{camera_name}_image_mask'][::-1].copy()
                 )
-                obs[f'{camera_name}_point_cloud'] = point_cloud
+                obs[f'{camera_name}_pcd'] = point_cloud
+                obs[f'{camera_name}_pcd_mask'] = seg_mask
         return obs
-
-
-def test():
-    env = RobosuiteEnv(
-        env_name="Lift",
-        robots="Panda",
-        use_image_obs=True,
-        use_depth_obs=True,
-        use_mask_obs=True
-    )
-    obs = env.reset()
-
-    
-if __name__ == "__main__":
-    test()
