@@ -1,8 +1,7 @@
 import imageio
 import numpy as np
 import gymnasium as gym
-from typing import Optional, Tuple, Dict
-from sim_demo_collector.util.file_util import str2path, mkdir
+from typing import Optional, Tuple, Dict, List
 
 
 class DataRecordingWrapper(gym.Wrapper):
@@ -10,7 +9,8 @@ class DataRecordingWrapper(gym.Wrapper):
     def __init__(
         self,
         env: gym.Env,
-        video_save_dir: Optional[str] = None
+        obs_keys: List,
+        save_path: Optional[str] = None
     ) -> None:
         super().__init__(env)
         self.global_step = 0

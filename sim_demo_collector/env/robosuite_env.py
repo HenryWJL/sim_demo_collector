@@ -84,6 +84,7 @@ class RobosuiteEnv:
         env_kwargs['has_offscreen_renderer'] = True if use_image_obs else False
         
         self.env = suite.make(**env_kwargs)
+        self.task_completion_hold_count = -1
 
     def _extract_seg_mask(self, seg_image: np.ndarray) -> np.ndarray:
         """
@@ -119,6 +120,7 @@ class RobosuiteEnv:
         return obs
 
     def reset(self) -> Dict:
+        self.task_completion_hold_count = -1
         obs = self.env.reset()
         return self._extract_obs(obs)
     
@@ -135,6 +137,7 @@ class RobosuiteEnv:
             obs (dict): observation dictionary after setting the simulator
                 state (only if "states" is in @state).
         """
+        self.task_completion_hold_count = -1
         should_ret = False
         if "model" in state:
             self.reset(unset_ep_meta=False)
@@ -153,7 +156,17 @@ class RobosuiteEnv:
 
     def step(self, action: np.ndarray) -> Tuple:
         obs, reward, _, info = self.env.step(action)
-        return self._extract_obs(obs), reward, False, info
+        # Task is done if having a success for 10 consecutive timesteps. Code is adapted from
+        # https://github.com/ARISE-Initiative/robosuite/blob/master/robosuite/scripts/collect_human_demonstrations.py
+        if self.env._check_success():
+            if self.task_completion_hold_count > 0:
+                self.task_completion_hold_count -= 1
+            else:
+                self.task_completion_hold_count = 10
+        else:
+            self.task_completion_hold_count = -1
+        
+        return self._extract_obs(obs), reward, self.is_done(), info
 
     def render(self) -> None:
         """Render from simulation to either an on-screen window or off-screen to RGB array."""
@@ -178,11 +191,10 @@ class RobosuiteEnv:
     def get_camera_extrinsic_matrix(self, camera_name: str) -> np.ndarray:
         """Return the extrinsic matrix of @camera_name in the world frame."""
         return get_camera_extrinsic_matrix(self.env.sim, camera_name)
-
-    def is_success(self) -> bool:
-        """Check if the task is successfully done"""
-        return self.env._check_success()
-
+    
+    def is_done(self) -> bool:
+        """Check if the task is done."""
+        return not self.task_completion_hold_count
 
 class RobosuiteEnv3D(RobosuiteEnv):
 
