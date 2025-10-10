@@ -1,6 +1,25 @@
+"""
+Reference code:
+https://github.com/ARISE-Initiative/robosuite/blob/master/robosuite/wrappers/gym_wrapper.py
+https://github.com/ARISE-Initiative/robomimic/blob/master/robomimic/envs/env_robosuite.py
+https://github.com/real-stanford/diffusion_policy/blob/main/diffusion_policy/env/robomimic/robomimic_image_wrapper.py
+"""
 import fpsample
 import numpy as np
-import gymnasium as gym
+
+try:
+    import gymnasium as gym
+    from gymnasium import spaces
+except ImportError:
+    # Most APIs between gym and gymnasium are compatible
+    print("WARNING! gymnasium is not installed. We will try to use openai gym instead.")
+    import gym
+    from gym import spaces
+    if not gym.__version__ >= "0.26.0":
+        # Due to API Changes in gym>=0.26.0, we need to ensure that the version is correct
+        # Please check: https://github.com/openai/gym/releases/tag/0.26.0
+        raise ImportError("Please ensure version of gym>=0.26.0 to use the GymWrapper.")
+    
 import robosuite as suite
 from typing import Optional, Union, Tuple, Literal, List, Dict
 from robosuite.controllers import load_controller_config
@@ -9,9 +28,21 @@ from robosuite.utils.camera_utils import (
     get_camera_intrinsic_matrix,
     get_camera_extrinsic_matrix
 )
-from sim_demo_collector.util.pcd_util import depth2pcd
+from sim_demo_collector.util.pc_util import pc_normalize, depth2pc
 
-# Adapted from https://github.com/ARISE-Initiative/robomimic/blob/master/robomimic/envs/env_robosuite.py
+
+def get_box_space(sample: np.ndarray) -> spaces.Box:
+    if np.issubdtype(sample.dtype, np.integer):
+        low = np.iinfo(sample.dtype).min
+        high = np.iinfo(sample.dtype).max
+    elif np.issubdtype(sample.dtype, np.inexact):
+        low = float("-inf")
+        high = float("inf")
+    else:
+        raise ValueError()
+    return spaces.Box(low=low, high=high, shape=sample.shape, dtype=sample.dtype)
+
+
 class RobosuiteEnv(gym.Env):
 
     def __init__(
@@ -23,6 +54,7 @@ class RobosuiteEnv(gym.Env):
         use_image_obs: Optional[bool] = False,
         use_depth_obs: Optional[bool] = False,
         use_mask_obs: Optional[bool] = False,
+        flatten_obs: Optional[bool] = False,
         image_size: Optional[Tuple[int, int]] = (84, 84),
         controller: Optional[str] = "OSC_POSE",
         delta_action: Optional[bool] = False,
@@ -32,7 +64,7 @@ class RobosuiteEnv(gym.Env):
         render_image_size: Optional[Tuple[int, int]] = (256, 256)
     ) -> None:
         """
-        Wrapper class for Robosuite (https://robosuite.ai/docs/overview.html).
+        Gym wrapper class for Robosuite (https://robosuite.ai/docs/overview.html).
 
         Args:
             env_name (str): Robosuite environment (https://robosuite.ai/docs/modules/environments.html).
@@ -41,6 +73,7 @@ class RobosuiteEnv(gym.Env):
             use_image_obs (bool): If True, returns camera observations.
             use_depth_obs (bool): If True, returns depth observations.
             use_mask_obs (bool): If True, returns binary robot masks.
+            flatten_obs (bool): If True, returns flattened observations (1D arrays).
             image_size (tuple): height and width of returned images.
             controller (str): Controller type (https://robosuite.ai/docs/modules/controllers.html).
             delta_action (bool): If True, uses delta action control.
@@ -63,6 +96,7 @@ class RobosuiteEnv(gym.Env):
         # ==================================================================== #
         # ======================= Observation Settings ======================= #
         # ==================================================================== #
+        self.camera_names = [camera_names] if isinstance(camera_names, str) else camera_names
         self.image_size = image_size
         if use_depth_obs:
             assert use_image_obs, "Must set @use_image_obs = True"
@@ -82,11 +116,70 @@ class RobosuiteEnv(gym.Env):
         self.render_image_size = render_image_size
         env_kwargs['has_renderer'] = render_mode == "human"
         env_kwargs['has_offscreen_renderer'] = True if use_image_obs else False
-        
+        # Create environments
         self.env = suite.make(**env_kwargs)
-        self.camera_names = [camera_names] if isinstance(camera_names, str) else camera_names
+        # Set up observation and action spaces
+        obs = self._extract_obs(self.env.reset())
+        self.flatten_obs = flatten_obs
+        if self.flatten_obs:
+            flat_obs = self._flatten_obs(obs)
+            obs_shape = flat_obs.shape
+            high = np.inf * np.ones(obs_shape)
+            low = -high
+            self.observation_space = spaces.Box(
+                low=low,
+                high=high,
+                shape=obs_shape
+            )
+        else:
+            self.observation_space = spaces.Dict({
+                key: get_box_space(obs[key]) for key in obs.keys()
+            })
+        low, high = self.env.action_spec
+        self.action_space = spaces.Box(
+            low=low,
+            high=high,
+            shape=low.shape,
+            dtype=low.dtype
+        )
+
+        self.seed_state_map = {}
         self.task_completion_hold_count = -1
 
+    def _flatten_obs(self, obs_dict: Dict) -> np.ndarray:
+        """
+        Flatten observations to 1D arrays and concatenate.
+
+        Args:
+            obs_dict (OrderedDict): ordered dictionary of observations.
+
+        Returns:
+            obs (np.ndarray): observations flattened into a 1D array.
+        """
+        obs_list = []
+        for obs in obs_dict.values():
+            obs_list.append(np.array(obs).flatten())
+        obs = np.concatenate(obs_list, dtype=np.float32)
+        return obs
+
+    def _extract_obs(self, raw_obs: Dict) -> Dict:
+        obs = {}
+        for key in raw_obs.keys():
+            if key.endswith("image"):
+                # By default MuJoCo returns vertically flipped images
+                obs[key] = raw_obs[key][::-1].copy()
+            elif key.endswith("depth"):
+                # By default MuJoCo returns vertically flipped images
+                # By default MuJoCo returns normalized depth values
+                obs[key] = get_real_depth_map(self.env.sim, raw_obs[key][::-1].copy()).astype(np.float64)
+            elif key.endswith("segmentation_element"):
+                # By default MuJoCo returns vertically flipped images
+                seg_mask = self._extract_seg_mask(raw_obs[key][::-1].copy())
+                obs[key.replace("segmentation_element", "image_mask")] = seg_mask
+            else:
+                obs[key] = raw_obs[key].copy()
+        return obs
+    
     def _extract_seg_mask(self, seg_image: np.ndarray) -> np.ndarray:
         """
         Extract robot segmentation masks.
@@ -99,31 +192,30 @@ class RobosuiteEnv(gym.Env):
         gripper_geom_names = self.env.robots[0].gripper.visual_geoms
         robot_geom_names = arm_geom_names + gripper_geom_names
         robot_geom_ids = [self.env.sim.model.geom_name2id(n) for n in robot_geom_names]
-        seg_mask = np.isin(seg_image, robot_geom_ids)
+        seg_mask = np.isin(seg_image, robot_geom_ids).astype(np.uint8)
         return seg_mask
 
-    def _extract_obs(self, raw_obs: Dict) -> Dict:
-        obs = {}
-        for key in raw_obs.keys():
-            if key.endswith("image"):
-                # By default MuJoCo returns vertically flipped images
-                obs[key] = raw_obs[key][::-1].copy()
-            elif key.endswith("depth"):
-                # By default MuJoCo returns vertically flipped images
-                # By default MuJoCo returns normalized depth values
-                obs[key] = get_real_depth_map(self.env.sim, raw_obs[key][::-1].copy())
-            elif key.endswith("segmentation_element"):
-                # By default MuJoCo returns vertically flipped images
-                seg_mask = self._extract_seg_mask(raw_obs[key][::-1].copy())
-                obs[key.replace("segmentation_element", "image_mask")] = seg_mask
-            else:
-                obs[key] = raw_obs[key].copy()
-        return obs
-
-    def reset(self, seed, options) -> Dict:
+    def reset(self, seed: Optional[int] = None, options: Optional[Dict] = None) -> Dict:
         self.task_completion_hold_count = -1
-        obs = self.env.reset()
-        return self._extract_obs(obs)
+        init_state = None
+        if options is not None:
+            init_state = options.get('init_state')
+        if init_state is not None:
+            raw_obs = self.reset_to({'states': init_state})
+        elif seed is not None:
+            if seed in self.seed_state_map:
+                raw_obs = self.reset_to({'states': self.seed_state_map[seed]})
+            else:
+                np.random.seed(seed=seed)
+                raw_obs = self.env.reset()
+                state = self.env.sim.get_state()
+                self.seed_state_map[seed] = state
+        else:
+            raw_obs = self.env.reset()
+        obs = self._extract_obs(raw_obs)
+        if self.flatten_obs:
+            obs = self._flatten_obs(obs)
+        return obs
     
     def reset_to(self, state: Dict) -> Dict:
         """
@@ -135,7 +227,7 @@ class RobosuiteEnv(gym.Env):
                 - model (str): mujoco scene xml.
         
         Returns:
-            obs (dict): observation dictionary after setting the simulator
+            raw_obs (dict): observation dictionary after setting the simulator
                 state (only if "states" is in @state).
         """
         self.task_completion_hold_count = -1
@@ -146,17 +238,24 @@ class RobosuiteEnv(gym.Env):
             self.env.reset_from_xml_string(xml)
             self.env.sim.reset()
         if "states" in state:
-            self.env.sim.set_state_from_flattened(state["states"])
+            self.env.sim.set_state(state["states"])
             self.env.sim.forward()
             should_ret = True
         if "goal" in state:
-            self.env.set_goal(**state["goal"])
+            if hasattr(self.env, "set_goal"):
+                self.env.set_goal(**state["goal"])
+            else:
+                print("Warning: Environment does not support goal setting.")
         if should_ret:
-            return self._extract_obs(self.env._get_observations(force_update=True))
+            raw_obs = self.env._get_observations(force_update=True)
+            return raw_obs
         return None
 
     def step(self, action: np.ndarray) -> Tuple:
-        obs, reward, _, info = self.env.step(action)
+        raw_obs, reward, _, info = self.env.step(action)
+        obs = self._extract_obs(raw_obs)
+        if self.flatten_obs:
+            obs = self._flatten_obs(obs)
         # Task is done if having a success for 10 consecutive timesteps. Code is adapted from
         # https://github.com/ARISE-Initiative/robosuite/blob/master/robosuite/scripts/collect_human_demonstrations.py
         if self.env._check_success():
@@ -168,7 +267,7 @@ class RobosuiteEnv(gym.Env):
             self.task_completion_hold_count = -1
         done = not self.task_completion_hold_count
         
-        return self._extract_obs(obs), reward, done, info
+        return obs, reward, done, info
 
     def render(self) -> None:
         """Render from simulation to either an on-screen window or off-screen to RGB array."""
@@ -199,26 +298,30 @@ class RobosuiteEnv3D(RobosuiteEnv):
 
     def __init__(
         self,
-        use_pcd_obs: Optional[bool] = False,
+        use_pc_obs: Optional[bool] = False,
         num_points: Optional[int] = 512,
         bounding_boxes: Optional[Dict] = dict(),
+        normalize_pc: Optional[bool] = True,
         **kwargs
     ) -> None:
         """
         Args:
-            use_pcd_obs (bool): If True, returns point cloud observations.
+            use_pc_obs (bool): If True, returns point cloud observations.
+            num_points (int): Number of points in the point clouds.
             bounding_boxes (dict): Per-camera bounding boxes of the point clouds.
+            normalize_pc (bool): If True, returns normalized point cloud observations.
         """
-        if use_pcd_obs:
+        if use_pc_obs:
             assert kwargs.get('use_image_obs') and kwargs.get('use_depth_obs')
-        super().__init__(**kwargs)
-        self.use_pcd_obs = use_pcd_obs
+        self.use_pc_obs = use_pc_obs
         self.num_points = num_points
         self.bounding_boxes = bounding_boxes
+        self.normalize_pc = normalize_pc
+        super().__init__(**kwargs)
         
     def _extract_obs(self, raw_obs: Dict) -> Dict:
         obs = super()._extract_obs(raw_obs)
-        if self.use_pcd_obs:
+        if self.use_pc_obs:
             for camera_name in self.camera_names:
                 # By default the camera intrinsic matrix computed from
                 # MuJoCo’s camera parameters already assumes image flip.
@@ -227,16 +330,19 @@ class RobosuiteEnv3D(RobosuiteEnv):
                 seg_mask = obs.get(f'{camera_name}_image_mask')
                 if seg_mask is not None:
                     seg_mask = seg_mask[::-1].copy()
-                point_cloud, seg_mask = depth2pcd(
+                pc, seg_mask = depth2pc(
                     depth=depth,
                     camera_intrinsic_matrix=cam_intrin_mat,
                     bounding_box=self.bounding_boxes.get(camera_name),
                     seg_mask=seg_mask
                 )
-                fps_idx = fpsample.bucket_fps_kdline_sampling(point_cloud, self.num_points, h=3)
-                obs[f'{camera_name}_pcd'] = point_cloud[fps_idx]
+                fps_idx = fpsample.bucket_fps_kdline_sampling(pc, self.num_points, h=3)
+                pc = pc[fps_idx]
+                if self.normalize_pc:
+                    pc = pc_normalize(pc)
+                obs[f'{camera_name}_pc'] = pc
                 if seg_mask is not None:
-                    obs[f'{camera_name}_pcd_mask'] = seg_mask[fps_idx]
+                    obs[f'{camera_name}_pc_mask'] = seg_mask[fps_idx]
         return obs
     
 
@@ -253,16 +359,22 @@ def test():
         use_object_obs=True,
         use_image_obs=True,
         use_depth_obs=True,
-        use_pcd_obs=True,
+        use_pc_obs=True,
         use_mask_obs=True,
     )
-    obs = env.reset()
+    obs = env.reset(seed=42)
+    env.render()
+    for _ in range(10):
+        env.step(env.action_space.sample())
+        env.render()
+    obs = env.reset(seed=42)
+    env.render()
 
     image = obs[f'{camera_name}_image']
     depth = obs[f'{camera_name}_depth']
     image_mask = obs[f'{camera_name}_image_mask']
-    pcd = obs[f'{camera_name}_pcd']
-    pcd_mask = obs[f'{camera_name}_pcd_mask']
+    pc = obs[f'{camera_name}_pc']
+    pc_mask = obs[f'{camera_name}_pc_mask']
 
     # Visualize images
     _, axs = plt.subplots(1, 3, figsize=(12, 4))
@@ -283,10 +395,10 @@ def test():
     plt.show()
 
     # Visualize point clouds
-    pcd_o3d = o3d.geometry.PointCloud()
-    pcd_o3d.points = o3d.utility.Vector3dVector(pcd)
-    colors = np.zeros_like(pcd)
-    colors[pcd_mask == 1] = [1, 0, 0]   # red = robot
-    colors[pcd_mask == 0] = [0, 1, 0]   # green = environment
-    pcd_o3d.colors = o3d.utility.Vector3dVector(colors)
-    o3d.visualization.draw_geometries([pcd_o3d])
+    pc_o3d = o3d.geometry.PointCloud()
+    pc_o3d.points = o3d.utility.Vector3dVector(pc)
+    colors = np.zeros_like(pc)
+    colors[pc_mask == 1] = [1, 0, 0]   # red = robot
+    colors[pc_mask == 0] = [0, 1, 0]   # green = environment
+    pc_o3d.colors = o3d.utility.Vector3dVector(colors)
+    o3d.visualization.draw_geometries([pc_o3d])
