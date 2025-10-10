@@ -28,7 +28,7 @@ def depth2pc(
     z = depth
     x = (u - cx) / fx * z
     y = (v - cy) / fy * z
-    pc = np.stack([x, y, z], axis=-1)
+    pc = np.stack([x, y, z], axis=-1, dtype=np.float32)
     # Apply bounding box mask
     bb_mask = np.ones_like(z, dtype=bool)
     if bounding_box is not None:
