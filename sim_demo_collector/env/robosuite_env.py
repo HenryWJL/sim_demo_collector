@@ -13,12 +13,11 @@ from sim_demo_collector.util.pcd_util import depth2pcd
 # Adapted from https://github.com/ARISE-Initiative/robomimic/blob/master/robomimic/envs/env_robosuite.py
 class RobosuiteEnv:
 
-    CAMERA_NAMES = ["agentview", "frontview", "robot0_eye_in_hand"]
-
     def __init__(
         self,
         env_name: str,
         robots: Union[str, List[str]],
+        camera_names: Union[str, List[str]],
         use_object_obs: Optional[bool] = False,
         use_image_obs: Optional[bool] = False,
         use_depth_obs: Optional[bool] = False,
@@ -51,7 +50,7 @@ class RobosuiteEnv:
         env_kwargs = dict(
             env_name=env_name,
             robots=robots,
-            camera_names=self.CAMERA_NAMES,
+            camera_names=camera_names,
             use_object_obs=use_object_obs,
             use_camera_obs=use_image_obs,
             camera_depths=use_depth_obs,

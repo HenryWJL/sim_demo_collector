@@ -1,6 +1,10 @@
 _target_: sim_demo_collector.env.robosuite.RobosuiteEnv
 env_name: ${task.name}
 robots: Panda
+camera_names:
+- agentview
+- frontview
+- robot0_eye_in_hand
 use_object_obs: false
 use_image_obs: true
 use_depth_obs: false
