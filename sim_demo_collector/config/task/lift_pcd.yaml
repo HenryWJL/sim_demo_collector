@@ -4,11 +4,11 @@ defaults:
 
 name: Lift
 obs_keys:
-  - frontview_pcd
-  - robot0_eye_in_hand_pcd
-  - robot0_eef_pos
-  - robot0_eef_quat
-  - robot0_gripper_qpos
+- frontview_pcd
+- robot0_eye_in_hand_pcd
+- robot0_eef_pos
+- robot0_eef_quat
+- robot0_gripper_qpos
 num_points: 512
 bounding_boxes:
   frontview:

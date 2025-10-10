@@ -4,10 +4,10 @@ defaults:
 
 name: Lift
 obs_keys:
-  - agentview_image
-  - robot0_eye_in_hand_image
-  - robot0_eef_pos
-  - robot0_eef_quat
-  - robot0_gripper_qpos
+- agentview_image
+- robot0_eye_in_hand_image
+- robot0_eef_pos
+- robot0_eef_quat
+- robot0_gripper_qpos
 num_episodes: 50
 max_episode_steps: 100
