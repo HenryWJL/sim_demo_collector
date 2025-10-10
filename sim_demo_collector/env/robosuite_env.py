@@ -98,7 +98,7 @@ class RobosuiteEnv:
         gripper_geom_names = self.env.robots[0].gripper.visual_geoms
         robot_geom_names = arm_geom_names + gripper_geom_names
         robot_geom_ids = [self.env.sim.model.geom_name2id(n) for n in robot_geom_names]
-        seg_mask = np.isin(seg_image, robot_geom_ids).astype(np.uint8)
+        seg_mask = np.isin(seg_image, robot_geom_ids)
         return seg_mask
 
     def _extract_obs(self, raw_obs: Dict) -> Dict:
