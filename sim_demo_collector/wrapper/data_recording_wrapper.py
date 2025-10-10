@@ -1,7 +1,7 @@
 import zarr
 import numpy as np
 import gymnasium as gym
-from typing import Optional, Tuple, Dict, List
+from typing import Tuple, Dict
 
 
 class DataRecordingWrapper(gym.Wrapper):
@@ -13,11 +13,12 @@ class DataRecordingWrapper(gym.Wrapper):
         zarr_path: str
     ) -> None:
         super().__init__(env)
-        self.obs_keys = list(shape_meta['obs'].keys())
+        self.shape_meta = shape_meta
+        self.obs_keys = list(self.shape_meta['obs'].keys())
         # Create Zarr datasets
         self.root = zarr.open(zarr_path, mode="a")
         for key in self.obs_keys:
-            shape = shape_meta['obs'][key]
+            shape = self.shape_meta['obs'][key]
             dtype = np.float32
             if key.endswith("image"):
                 dtype = np.uint8
@@ -27,22 +28,24 @@ class DataRecordingWrapper(gym.Wrapper):
                 key,
                 shape=(0, *shape),
                 chunks=(10, *shape),
-                dtype=dtype,
-                maxshape=(None, *shape)
+                dtype=dtype
             )
         self.root.create_dataset(
             'action',
-            shape=(0, *shape_meta['action']),
-            chunks=(10, *shape_meta['action']),
-            dtype=np.float32,
-            maxshape=(None, *shape_meta['action'])
+            shape=(0, *self.shape_meta['action']),
+            chunks=(10, *self.shape_meta['action']),
+            dtype=np.float32
         )
         self.is_done = False
         self.data_buffer = {key: [] for key in self.obs_keys + ['action']}
 
     def reset(self, *args, **kwargs) -> Dict:
         if self.is_done:
+            # Remove the last observations to align with action sequences
+            for key in self.obs_keys:
+                self.data_buffer[key].pop()
             self.save()
+            self.clear_buffer()
         obs = super().reset(*args, **kwargs)
         for key in self.obs_keys:
             self.data_buffer[key].append(obs[key])
@@ -58,13 +61,51 @@ class DataRecordingWrapper(gym.Wrapper):
         return outputs
 
     def save(self) -> None:
-        old_n = img_ds.shape[0]
-        new_n = old_n + image_data.shape[0]
-
-        # Resize and append
-        img_ds.resize(new_n, axis=0)
-        img_ds[old_n:new_n] = image_data
+        for key in self.obs_keys + ['action']:
+            dataset = self.root[key]
+            data = np.stack(self.data_buffer[key])
+            start = dataset.shape[0]
+            end = start + data.shape[0]
+            dataset.resize(end, *data.shape[1:])
+            dataset[start: end] = data
         
-    def clear(self) -> None:
+    def clear_buffer(self) -> None:
         for key in self.data_buffer.keys():
             self.data_buffer[key].clear()
+
+
+def test():
+    from sim_demo_collector.env.robosuite_env import RobosuiteEnv3D
+
+    camera_names = ["frontview", "robot0_eye_in_hand"]
+
+    env = RobosuiteEnv3D(
+        env_name="Lift",
+        robots="Panda",
+        camera_names=camera_names,
+        use_object_obs=True,
+        use_image_obs=True,
+        use_depth_obs=True,
+        use_pcd_obs=True,
+        use_mask_obs=True,
+    )
+    env = DataRecordingWrapper(
+        env,
+        {
+            'obs': {
+                'frontview_image': [84, 84, 3],
+                'robot0_eye_in_hand_image_mask': [84, 84, 1],
+                "robot0_eef_pos": [3]
+            },
+            'action': [7]
+        },
+        "test.zarr"
+    )
+    obs = env.reset()
+    for i in range(5):
+        obs, rew, done, info = env.step(np.random.rand(7))
+    env.is_done = True
+    env.reset()
+
+if __name__ == "__main__":
+    test()

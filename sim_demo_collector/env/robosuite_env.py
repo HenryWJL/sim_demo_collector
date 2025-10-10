@@ -1,5 +1,6 @@
 import fpsample
 import numpy as np
+import gymnasium as gym
 import robosuite as suite
 from typing import Optional, Union, Tuple, Literal, List, Dict
 from robosuite.controllers import load_controller_config
@@ -11,7 +12,7 @@ from robosuite.utils.camera_utils import (
 from sim_demo_collector.util.pcd_util import depth2pcd
 
 # Adapted from https://github.com/ARISE-Initiative/robomimic/blob/master/robomimic/envs/env_robosuite.py
-class RobosuiteEnv:
+class RobosuiteEnv(gym.Env):
 
     def __init__(
         self,
@@ -119,7 +120,7 @@ class RobosuiteEnv:
                 obs[key] = raw_obs[key].copy()
         return obs
 
-    def reset(self) -> Dict:
+    def reset(self, seed, options) -> Dict:
         self.task_completion_hold_count = -1
         obs = self.env.reset()
         return self._extract_obs(obs)
