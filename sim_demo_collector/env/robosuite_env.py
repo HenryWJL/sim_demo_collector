@@ -165,8 +165,9 @@ class RobosuiteEnv:
                 self.task_completion_hold_count = 10
         else:
             self.task_completion_hold_count = -1
+        done = not self.task_completion_hold_count
         
-        return self._extract_obs(obs), reward, self.is_done(), info
+        return self._extract_obs(obs), reward, done, info
 
     def render(self) -> None:
         """Render from simulation to either an on-screen window or off-screen to RGB array."""
@@ -191,10 +192,7 @@ class RobosuiteEnv:
     def get_camera_extrinsic_matrix(self, camera_name: str) -> np.ndarray:
         """Return the extrinsic matrix of @camera_name in the world frame."""
         return get_camera_extrinsic_matrix(self.env.sim, camera_name)
-    
-    def is_done(self) -> bool:
-        """Check if the task is done."""
-        return not self.task_completion_hold_count
+
 
 class RobosuiteEnv3D(RobosuiteEnv):
 

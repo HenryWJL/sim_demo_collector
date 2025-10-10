@@ -1,6 +1,7 @@
-import imageio
+import zarr
 import numpy as np
 import gymnasium as gym
+from pathlib import Path
 from typing import Optional, Tuple, Dict, List
 
 
@@ -10,23 +11,22 @@ class DataRecordingWrapper(gym.Wrapper):
         self,
         env: gym.Env,
         obs_keys: List,
-        save_path: Optional[str] = None
+        save_dir: str
     ) -> None:
         super().__init__(env)
         self.global_step = 0
-        if video_save_dir is None:
-            self.record_videos = False
-        else:
-            self.record_videos = True
-            self.video_save_dir = mkdir(str2path(video_save_dir), parents=True, exist_ok=True)
-            self.frames = list()
-            
+        self.is_done = False
+        self.data = {key: [] for key in obs_keys}
+        self.obs_keys = obs_keys
+        self.save_dir = Path(save_dir).expanduser().absolute()
+        self.save_dir.mkdir(parents=True, exist_ok=True)
+
     def reset(self, *args, **kwargs) -> Dict:
+        if self.is_done:
+
         obs = super().reset(*args, **kwargs)
         self.global_step += 1
-        if self.record_videos:
-            self.frames = list()
-            self.video_recoder = imageio.get_writer(self.video_save_dir.joinpath(f"episode_{str(self.global_step).zfill(3)}.mp4"), fps=24)
+        self.data.append()
         return obs
     
     def step(self, action: np.ndarray) -> Tuple:
@@ -36,6 +36,9 @@ class DataRecordingWrapper(gym.Wrapper):
             assert frame.dtype == np.uint8
             self.video_recoder.append_data(frame)
         return outputs
-    
+
+    def save() -> None:
+        with zarr
+        
     def close(self) -> None:
         super().close()
