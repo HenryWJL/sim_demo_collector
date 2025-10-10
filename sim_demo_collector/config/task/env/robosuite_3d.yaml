@@ -10,6 +10,7 @@ use_image_obs: true
 use_depth_obs: false
 use_pcd_obs: true
 use_mask_obs: true
+flatten_obs: false
 image_size: [84, 84]
 num_points: ${task.num_points}
 bounding_boxes: ${task.bounding_boxes}
