@@ -83,6 +83,7 @@ class RobosuiteEnv:
         env_kwargs['has_offscreen_renderer'] = True if use_image_obs else False
         
         self.env = suite.make(**env_kwargs)
+        self.camera_names = [camera_names] if isinstance(camera_names, str) else camera_names
         self.task_completion_hold_count = -1
 
     def _extract_seg_mask(self, seg_image: np.ndarray) -> np.ndarray:
@@ -217,7 +218,7 @@ class RobosuiteEnv3D(RobosuiteEnv):
     def _extract_obs(self, raw_obs: Dict) -> Dict:
         obs = super()._extract_obs(raw_obs)
         if self.use_pcd_obs:
-            for camera_name in self.CAMERA_NAMES:
+            for camera_name in self.camera_names:
                 # By default the camera intrinsic matrix computed from
                 # MuJoCo’s camera parameters already assumes image flip.
                 cam_intrin_mat = super().get_camera_intrinsic_matrix(camera_name)
@@ -242,9 +243,12 @@ def test():
     import matplotlib.pyplot as plt
     import open3d as o3d
 
+    camera_name = "frontview"
+
     env = RobosuiteEnv3D(
         env_name="Lift",
         robots="Panda",
+        camera_names=camera_name,
         use_object_obs=True,
         use_image_obs=True,
         use_depth_obs=True,
@@ -253,7 +257,6 @@ def test():
     )
     obs = env.reset()
 
-    camera_name = "frontview"
     image = obs[f'{camera_name}_image']
     depth = obs[f'{camera_name}_depth']
     image_mask = obs[f'{camera_name}_image_mask']
