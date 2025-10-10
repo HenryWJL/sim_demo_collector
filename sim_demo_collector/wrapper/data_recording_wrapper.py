@@ -13,7 +13,8 @@ class DataRecordingWrapper(gym.Wrapper):
         zarr_path: str
     ) -> None:
         super().__init__(env)
-        self.obs_keys = shape_meta['obs'].keys()
+        self.obs_keys = list(shape_meta['obs'].keys())
+        # Create Zarr datasets
         self.root = zarr.open(zarr_path, mode="a")
         for key in self.obs_keys:
             shape = shape_meta['obs'][key]
@@ -37,7 +38,7 @@ class DataRecordingWrapper(gym.Wrapper):
             maxshape=(None, *shape_meta['action'])
         )
         self.is_done = False
-        self.data_buffer = {key: [] for key in obs_keys + ['action']}
+        self.data_buffer = {key: [] for key in self.obs_keys + ['action']}
 
     def reset(self, *args, **kwargs) -> Dict:
         if self.is_done:
