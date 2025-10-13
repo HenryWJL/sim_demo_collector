@@ -1,7 +1,7 @@
 import zarr
 import numpy as np
 import gymnasium as gym
-from typing import Tuple, Dict
+from typing import Tuple, Dict, List
 
 
 class DataRecordingWrapper(gym.Wrapper):
@@ -9,16 +9,15 @@ class DataRecordingWrapper(gym.Wrapper):
     def __init__(
         self,
         env: gym.Env,
-        shape_meta: Dict,
+        obs_keys: List,
         zarr_path: str
     ) -> None:
         super().__init__(env)
-        self.shape_meta = shape_meta
-        self.obs_keys = list(self.shape_meta['obs'].keys())
+        self.obs_keys = obs_keys
         # Create Zarr datasets
         self.root = zarr.open(zarr_path, mode="a")
         for key in self.obs_keys:
-            shape = self.shape_meta['obs'][key]
+            shape = self.observation_space[key].shape
             dtype = np.float32
             if key.endswith("image"):
                 dtype = np.uint8
@@ -32,8 +31,8 @@ class DataRecordingWrapper(gym.Wrapper):
             )
         self.root.create_dataset(
             name='action',
-            shape=(0, *self.shape_meta['action']),
-            chunks=(10, *self.shape_meta['action']),
+            shape=(0, *self.action_space.shape),
+            chunks=(10, *self.action_space.shape),
             dtype=np.float32
         )
         self.root.create_dataset(
@@ -109,16 +108,13 @@ def test():
     )
     env = DataRecordingWrapper(
         env,
-        {
-            'obs': {
-                'frontview_image': [84, 84, 3],
-                'robot0_eye_in_hand_image_mask': [84, 84, 1],
-                'frontview_pc': [512, 3],
-                "robot0_eef_pos": [3]
-            },
-            'action': [7]
-        },
-        "test.zarr"
+        obs_keys=[
+            'frontview_image',
+            'robot0_eye_in_hand_image_mask',
+            'frontview_pc',
+            'robot0_eef_pos'
+        ],
+        zarr_path="test.zarr"
     )
     env.reset()
     for i in range(10):
