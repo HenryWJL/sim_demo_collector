@@ -51,6 +51,8 @@ class DataRecordingWrapper(gym.Wrapper):
             for key in self.obs_keys:
                 self._data_buffer[key].pop()
             self._save()
+        else:
+            print("[WARNING]: Data would not be saved since task was not done.")
         self._clear_buffer()
         self._is_done = False
         obs = super().reset(*args, **kwargs)
