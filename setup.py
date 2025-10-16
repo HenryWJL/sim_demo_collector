@@ -17,6 +17,7 @@ setup(
     setup_requires=["setuptools>=62.3.0"],
     include_package_data=True,
     install_requires=[
+        "click==8.3.0",
         "fpsample==0.3.3",
         "gymnasium==1.0.0",
         "hydra-core==1.3.2",
