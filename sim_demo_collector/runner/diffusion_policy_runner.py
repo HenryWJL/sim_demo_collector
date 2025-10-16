@@ -49,6 +49,8 @@ class DiffusionPolicyRunner:
     
     def run(self) -> None:
         for i in range(self.num_episodes):
+            obs = self.env.reset()
+            self.env.render()
             pbar = tqdm.tqdm(
                 total=self.max_episode_steps,
                 desc=f"Collecting episode [{i + 1}/{self.num_episodes}]", 
@@ -56,8 +58,6 @@ class DiffusionPolicyRunner:
                 mininterval=5.0
             )
             done = False
-            obs = self.env.reset()
-            self.env.render()
             while not done:
                 obs = self._extract_obs(obs)
                 with torch.no_grad():
