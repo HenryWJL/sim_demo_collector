@@ -1,5 +1,5 @@
 _target_: sim_demo_collector.env.robosuite.RobosuiteEnv3D
-env_name: ${task.name}
+env_name: ${task.env_name}
 robots: Panda
 camera_names:
 - agentview

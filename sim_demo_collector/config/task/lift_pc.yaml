@@ -2,7 +2,8 @@ defaults:
   - _self_
   - env: robosuite
 
-name: Lift
+name: lift_pc
+env_name: Lift
 obs_keys:
 - frontview_pcd
 - robot0_eye_in_hand_pcd
@@ -19,5 +20,5 @@ bounding_boxes:
     x: [-0.5, 0.5]
     y: [-0.5, 0.5]
     z: [0, 0.5]
-num_episodes: 50
 max_episode_steps: 100
+num_episodes: 50
