@@ -1,6 +1,7 @@
 import zarr
 import numpy as np
 import gymnasium as gym
+from pathlib import Path
 from typing import Tuple, Dict, List
 
 
@@ -15,6 +16,7 @@ class DataRecordingWrapper(gym.Wrapper):
         super().__init__(env)
         self.obs_keys = obs_keys
         # Create Zarr datasets
+        Path(zarr_path).expanduser().absolute().parent.mkdir(parents=True, exist_ok=True)
         self.root = zarr.open(zarr_path, mode="a")
         for key in self.obs_keys:
             shape = self.observation_space[key].shape
