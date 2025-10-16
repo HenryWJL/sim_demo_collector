@@ -117,11 +117,6 @@ def test():
         zarr_path="test.zarr"
     )
     env.reset()
-    for i in range(10):
-        obs, rew, done, info = env.step(env.action_space.sample())
-    env._is_done = True
-    env.reset()
-    for i in range(15):
-        obs, rew, done, info = env.step(env.action_space.sample())
-    env._is_done = True
+    for _ in range(200):
+        env.step(env.action_space.sample())
     env.reset()
