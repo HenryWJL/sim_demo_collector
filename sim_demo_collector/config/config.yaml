@@ -1,4 +1,4 @@
 defaults:
   - _self_
-  - env: robosuite
-  - policy: diffusion_policy
+  - task: lift_image
+  - runner: diffusion_policy_runner
