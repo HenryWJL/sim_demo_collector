@@ -1,4 +1,4 @@
-_target_: sim_demo_collector.env.robosuite.RobosuiteEnv
+_target_: sim_demo_collector.env.robosuite_env.RobosuiteEnv
 env_name: ${task.env_name}
 robots: Panda
 camera_names:
