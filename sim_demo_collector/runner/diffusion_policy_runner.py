@@ -48,7 +48,7 @@ class DiffusionPolicyRunner:
                 obs[key] = torch.from_numpy(raw_obs[key]).float().unsqueeze(0).to(self.device)
         return obs
     
-    def run(self, checkpoint: Optional[str] = None) -> None:
+    def run(self, checkpoint: Optional[str] = None, init_seed: Optional[int] = None) -> None:
         if checkpoint is not None:
             payload = torch.load(open(checkpoint, 'rb'), pickle_module=dill)
             cfg = payload['cfg']
@@ -63,7 +63,10 @@ class DiffusionPolicyRunner:
             self.policy.eval()
             
         for i in range(self.num_episodes):
-            obs = self.env.reset()
+            seed = None
+            if init_seed is not None:
+                seed = init_seed + i
+            obs = self.env.reset(seed=seed)
             self.env.render()
             pbar = tqdm.tqdm(
                 total=self.max_episode_steps,
