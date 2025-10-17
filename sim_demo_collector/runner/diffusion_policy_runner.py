@@ -4,7 +4,7 @@ import numpy as np
 import gymnasium as gym
 import torchvision.transforms.functional as F
 from typing import Optional, Dict
-from diffusion_policy.policy.diffusion_unet_hybrid_image_policy import DiffusionUnetHybridImagePolicy
+from diffusion_policy.policy.base_image_policy import BaseImagePolicy
 from sim_demo_collector.util.transform_util import RotationTransformer
 
 
@@ -13,7 +13,7 @@ class DiffusionPolicyRunner:
     def __init__(
         self,
         env: gym.Env,
-        policy: DiffusionUnetHybridImagePolicy,
+        policy: BaseImagePolicy,
         rotation_transformer: RotationTransformer,
         shape_meta: Dict,
         max_episode_steps: Optional[int] = None,
@@ -45,7 +45,9 @@ class DiffusionPolicyRunner:
                 obs[key] = torch.from_numpy(raw_obs[key]).float().unsqueeze(0).to(self.device)
         return obs
     
-    def run(self) -> None:
+    def run(self, checkpoint: Optional[str] = None) -> None:
+        if checkpoint is not None:
+            self.policy.load_state_dict(torch.load(checkpoint, map_location=self.device))
         for i in range(self.num_episodes):
             obs = self.env.reset()
             self.env.render()
