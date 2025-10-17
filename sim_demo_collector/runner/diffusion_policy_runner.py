@@ -41,8 +41,8 @@ class DiffusionPolicyRunner:
         for key in self.shape_meta['obs'].keys():
             if key.endswith("image"):
                 image = torch.from_numpy(raw_obs[key]).permute(0, 3, 1, 2) / 255.0
-                if list(image.shape[2:]) != self.shape_meta['obs'][key]['shape']:
-                    image = F.resize(image, self.shape_meta['obs'][key]['shape'])
+                if list(image.shape[2:]) != list(self.shape_meta['obs'][key]['shape']):
+                    image = F.resize(image, list(self.shape_meta['obs'][key]['shape']))
                 obs[key] = image.unsqueeze(0).to(self.device)
             else:
                 obs[key] = torch.from_numpy(raw_obs[key]).float().unsqueeze(0).to(self.device)

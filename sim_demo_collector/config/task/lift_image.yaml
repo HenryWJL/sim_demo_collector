@@ -10,5 +10,5 @@ obs_keys:
 - robot0_eef_pos
 - robot0_eef_quat
 - robot0_gripper_qpos
-max_episode_steps: 100
-num_episodes: 50
+max_episode_steps: 200
+num_episodes: 10
