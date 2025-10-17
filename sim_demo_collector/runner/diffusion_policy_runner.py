@@ -1,10 +1,13 @@
+import dill
 import tqdm
+import hydra
 import torch
 import numpy as np
 import gymnasium as gym
 import torchvision.transforms.functional as F
 from typing import Optional, Dict
 from diffusion_policy.policy.base_image_policy import BaseImagePolicy
+from diffusion_policy.workspace.base_workspace import BaseWorkspace
 from sim_demo_collector.util.transform_util import RotationTransformer
 
 
@@ -47,7 +50,18 @@ class DiffusionPolicyRunner:
     
     def run(self, checkpoint: Optional[str] = None) -> None:
         if checkpoint is not None:
-            self.policy.load_state_dict(torch.load(checkpoint, map_location=self.device))
+            payload = torch.load(open(checkpoint, 'rb'), pickle_module=dill)
+            cfg = payload['cfg']
+            cls = hydra.utils.get_class(cfg._target_)
+            workspace: BaseWorkspace = cls(cfg)
+            workspace.load_payload(payload, exclude_keys=None, include_keys=None)
+            # Get policy from workspace
+            self.policy = workspace.model
+            if cfg.training.use_ema:
+                self.policy = workspace.ema_model
+            self.policy.to(self.device)
+            self.policy.eval()
+            
         for i in range(self.num_episodes):
             obs = self.env.reset()
             self.env.render()
