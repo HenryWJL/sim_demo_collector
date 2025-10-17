@@ -15,3 +15,7 @@ def main(task, runner, checkpoint):
         cfg = hydra.compose(config_name="config", overrides=[f"task={task}"])
         runner = hydra.utils.instantiate(cfg.runner)
         runner.run(checkpoint)
+
+
+if __name__ == "__main__":
+    main()
