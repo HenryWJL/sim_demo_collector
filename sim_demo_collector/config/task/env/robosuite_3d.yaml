@@ -7,7 +7,7 @@ camera_names:
 - robot0_eye_in_hand
 use_object_obs: false
 use_image_obs: true
-use_depth_obs: false
+use_depth_obs: true
 use_pc_obs: true
 use_mask_obs: true
 flatten_obs: false
