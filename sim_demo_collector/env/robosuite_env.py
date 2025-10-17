@@ -21,6 +21,7 @@ except ImportError:
         raise ImportError("Please ensure version of gym>=0.26.0 to use the GymWrapper.")
     
 import robosuite as suite
+from omegaconf import ListConfig
 from typing import Optional, Union, Tuple, Literal, List, Dict
 from robosuite.controllers import load_controller_config
 from robosuite.utils.camera_utils import (
@@ -81,6 +82,12 @@ class RobosuiteEnv(gym.Env):
             render_mode (str): "human" or "rgb_array". If "human", opens a
                 real-time onscreen viewer; otherwise, returns a NumPy array.
         """
+        # Robosuite strictly requires @robots and @camera_names to be either str or list type.
+        # This may cause errors when instantiating with hydra (which returns ListConfig type).
+        if isinstance(robots, ListConfig):
+            robots = list(robots)
+        if isinstance(camera_names, ListConfig):
+            camera_names = list(camera_names)
         env_kwargs = dict(
             env_name=env_name,
             robots=robots,
