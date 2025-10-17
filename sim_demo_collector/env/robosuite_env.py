@@ -268,7 +268,7 @@ class RobosuiteEnv(gym.Env):
         if self.env._check_success():
             if self.task_completion_hold_count > 0:
                 self.task_completion_hold_count -= 1
-            else:
+            elif self.task_completion_hold_count < 0:
                 self.task_completion_hold_count = 10
         else:
             self.task_completion_hold_count = -1
