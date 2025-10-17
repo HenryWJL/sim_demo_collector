@@ -75,7 +75,7 @@ class DiffusionPolicyRunner:
             while not done:
                 obs = self._extract_obs(obs)
                 with torch.no_grad():
-                    action = self.policy.predict_action(obs)
+                    action = self.policy.predict_action(obs)['action']
                 action = action.detach().cpu().squeeze(0).numpy()
                 # When using absolute actions, diffusion policy returns 6d rotations.
                 # Here, we need to transform 6d rotations into the rotation type that
