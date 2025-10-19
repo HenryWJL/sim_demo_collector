@@ -93,7 +93,8 @@ class DiffusionPolicyRunner:
                 obs, _, done, info = self.env.step(action)
                 self.env.render()
                 done = np.all(done)
-                if info['is_success']:
+                is_success = np.all(info['is_success'])
+                if is_success:
                     success_cnt += 1
                 pbar.update(action.shape[1])
             pbar.close()
