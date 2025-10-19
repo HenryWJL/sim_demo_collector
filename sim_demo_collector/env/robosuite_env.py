@@ -273,7 +273,7 @@ class RobosuiteEnv(gym.Env):
         else:
             self.task_completion_hold_count = -1
         done = not self.task_completion_hold_count
-        
+        info['is_success'] = done
         return obs, reward, done, info
 
     def render(self) -> None:
