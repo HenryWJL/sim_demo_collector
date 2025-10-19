@@ -61,16 +61,18 @@ class DiffusionPolicyRunner:
                 self.policy = workspace.ema_model
             self.policy.to(self.device)
             self.policy.eval()
-            
-        for i in range(self.num_episodes):
+
+        seed_increment = 0
+        success_cnt = 0
+        while True:
             seed = None
             if init_seed is not None:
-                seed = init_seed + i
+                seed = init_seed + seed_increment
             obs = self.env.reset(seed=seed)
             self.env.render()
             pbar = tqdm.tqdm(
                 total=self.max_episode_steps,
-                desc=f"Collecting episode [{i + 1}/{self.num_episodes}]", 
+                desc=f"Collecting episode [{success_cnt + 1}/{self.num_episodes}]", 
                 leave=False,
                 mininterval=5.0
             )
@@ -88,10 +90,15 @@ class DiffusionPolicyRunner:
                 gripper = action[..., [-1]]
                 rot = self.rotation_transformer.forward(rot)
                 action = np.concatenate([pos, rot, gripper], axis=-1)
-                obs, _, done, _ = self.env.step(action)
+                obs, _, done, info = self.env.step(action)
                 self.env.render()
                 done = np.all(done)
+                if info['is_success']:
+                    success_cnt += 1
                 pbar.update(action.shape[1])
             pbar.close()
+            seed_increment += 1
+            if success_cnt == self.num_episodes:
+                break
         # Clear out data buffer
         self.env.reset()
