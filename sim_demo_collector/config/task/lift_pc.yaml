@@ -7,6 +7,8 @@ env_name: Lift
 obs_keys:
 - frontview_pc
 - robot0_eye_in_hand_pc
+- frontview_pc_mask
+- robot0_eye_in_hand_pc_mask
 - robot0_eef_pos
 - robot0_eef_quat
 - robot0_gripper_qpos
