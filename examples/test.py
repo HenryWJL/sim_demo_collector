@@ -47,15 +47,15 @@ def depth2pcd(
 
 
 # init env
-camera_names = ['frontview', 'robot0_eye_in_hand']
+camera_names = ['agentview', 'robot0_eye_in_hand']
 H = 84
 W = 84
 # Lift
 bounding_boxes = {
-    'frontview': {
+    'agentview': {
         'x': [-0.5, 0.5],
-        'y': [-0.4, 2],
-        'z': [1, 2.35]
+        'y': [-0.2, 3],
+        'z': [0, 1.5]
     },
     'robot0_eye_in_hand': {
         'x': [-0.5, 0.5],
@@ -67,7 +67,7 @@ controller_config = load_controller_config(default_controller="OSC_POSE")
 controller_config['control_delta'] = False
 controller_config['uncouple_pos_ori'] = False
 env = suite.make(
-    "NutAssemblySquare",
+    "PickPlaceCan",
     robots="Panda",
     controller_configs=controller_config,
     has_renderer=False,
