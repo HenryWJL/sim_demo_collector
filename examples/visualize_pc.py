@@ -5,9 +5,14 @@ import open3d as o3d
 
 
 def visualize_pc():
-    with zarr.open("demos/lift_pc/episodes.zarr", 'r') as f:
+    with zarr.open("demos/robosuite_square_pc/episodes.zarr", 'r') as f:
         pc_seq = f['frontview_pc'][()]
         pc_masks = f['frontview_pc_mask'][()]
+        actions = f['action'][()]
+        episode_ends = f['meta/episode_ends'][()]
+        print("Point cloud shape: ", pc_seq.shape)
+        print("Action shape: ", actions.shape)
+        print("Episode ends: ", episode_ends)
     
     vis = o3d.visualization.Visualizer()
     vis.create_window(window_name="Point Cloud Sequence", width=960, height=540)
