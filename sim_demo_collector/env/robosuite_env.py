@@ -70,6 +70,7 @@ class RobosuiteEnv(gym.Env):
         Args:
             env_name (str): Robosuite environment (https://robosuite.ai/docs/modules/environments.html).
             robots (str or list): Robot name(s) (https://robosuite.ai/docs/modules/robots.html).
+            camera_names (str or list): Camera name(s) (https://robosuite.ai/docs/modules/sensors.html).
             use_object_obs (bool): If True, returns object states.
             use_image_obs (bool): If True, returns camera observations.
             use_depth_obs (bool): If True, returns depth observations.
