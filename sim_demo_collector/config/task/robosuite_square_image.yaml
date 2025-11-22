@@ -2,8 +2,8 @@ defaults:
   - _self_
   - env: robosuite
 
-name: can_image
-env_name: PickPlaceCan
+name: robosuite_square_image
+env_name: NutAssemblySquare
 obs_keys:
 - agentview_image
 - robot0_eye_in_hand_image

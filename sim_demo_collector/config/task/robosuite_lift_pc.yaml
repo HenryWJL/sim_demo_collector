@@ -2,7 +2,7 @@ defaults:
   - _self_
   - env: robosuite_3d
 
-name: lift_pc
+name: robosuite_lift_pc
 env_name: Lift
 obs_keys:
 - frontview_pc

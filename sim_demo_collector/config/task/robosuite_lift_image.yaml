@@ -2,8 +2,8 @@ defaults:
   - _self_
   - env: robosuite
 
-name: square_image
-env_name: NutAssemblySquare
+name: robosuite_lift_image
+env_name: Lift
 obs_keys:
 - agentview_image
 - robot0_eye_in_hand_image
@@ -12,5 +12,5 @@ obs_keys:
 - robot0_eef_pos
 - robot0_eef_quat
 - robot0_gripper_qpos
-max_episode_steps: 300
-num_episodes: 100
+max_episode_steps: 200
+num_episodes: 50
