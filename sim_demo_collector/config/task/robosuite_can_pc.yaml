@@ -14,7 +14,7 @@ obs_keys:
 - robot0_gripper_qpos
 num_points: 512
 bounding_boxes:
-  frontview:
+  agentview:
     x: [-0.5, 0.5]
     y: [-0.2, 3]
     z: [0, 1.5]
