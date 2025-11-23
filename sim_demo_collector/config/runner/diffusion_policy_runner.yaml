@@ -9,7 +9,7 @@ env:
     _target_: sim_demo_collector.wrapper.data_recording_wrapper.DataRecordingWrapper
     env: ${task.env}
     obs_keys: ${task.obs_keys}
-    zarr_path: demos/${task.name}/episodes.zarr
+    zarr_path: demos/${task.name}.zarr
 
   n_obs_steps: ${runner.policy.n_obs_steps}
   n_action_steps: ${runner.policy.n_action_steps}
