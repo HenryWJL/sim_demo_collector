@@ -33,12 +33,8 @@ def depth2pc(
     bb_mask = np.ones_like(z, dtype=bool)
     if bounding_box is not None:
         bb_mask = (
-            (x > bounding_box['x'][0]) &
-            (x < bounding_box['x'][1]) &
-            (y > bounding_box['y'][0]) &
-            (y < bounding_box['y'][1]) &
-            (z > bounding_box['z'][0]) &
-            (z < bounding_box['z'][1])
+            (np.all(pc[:, :3] > bounding_box['lower_bound'], axis=1))
+            & (np.all(pc[:, :3] < bounding_box['upper_bound'], axis=1))
         )
     pc = pc[bb_mask]
     if seg_mask is not None:
