@@ -26,19 +26,19 @@ class DataRecordingWrapper(gym.Wrapper):
             elif key.endswith("mask"):
                 dtype = bool
             self.root.create_dataset(
-                name=key,
+                name=f"data/{key}",
                 shape=(0, *shape),
                 chunks=(10, *shape),
                 dtype=dtype
             )
         self.root.create_dataset(
-            name='action',
+            name="data/action",
             shape=(0, *self.action_space.shape),
             chunks=(10, *self.action_space.shape),
             dtype=np.float32
         )
         self.root.create_dataset(
-            name='meta/episode_ends',
+            name="meta/episode_ends",
             shape=(0,),
             chunks=(10,),
             dtype=np.int64
