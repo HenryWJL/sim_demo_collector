@@ -5,10 +5,10 @@ import open3d as o3d
 
 
 def visualize_pc():
-    with zarr.open("demos/robosuite_square_pc/episodes.zarr", 'r') as f:
-        pc_seq = f['frontview_pc'][()]
-        pc_masks = f['frontview_pc_mask'][()]
-        actions = f['action'][()]
+    with zarr.open("demos/robosuite_square_pc.zarr", 'r') as f:
+        pc_seq = f['data/frontview_pc'][()]
+        pc_masks = f['data/frontview_pc_mask'][()]
+        actions = f['data/action'][()]
         episode_ends = f['meta/episode_ends'][()]
         print("Point cloud shape: ", pc_seq.shape)
         print("Action shape: ", actions.shape)
