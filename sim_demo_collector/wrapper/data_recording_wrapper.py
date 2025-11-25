@@ -76,7 +76,7 @@ class DataRecordingWrapper(gym.Wrapper):
 
     def _save(self) -> None:
         for key in self.obs_keys + ['action']:
-            data = self.root[key]
+            data = self.root[f'data/{key}']
             new_data = np.stack(self._data_buffer[key])
             start = data.shape[0]
             end = start + new_data.shape[0]
