@@ -8,12 +8,13 @@ from pathlib import Path
 @click.option("-r", "--runner", type=str, required=True, help="Policy runner.")
 @click.option("-c", "--checkpoint", type=str, default=None, help="Checkpoints.")
 @click.option("-s", "--seed", type=int, default=None, help="Initial seed.")
-def main(task, runner, checkpoint, seed):
+@click.option("-d", "--device", type=str, default="cpu", help="Device type.")
+def main(task, runner, checkpoint, seed, device):
     with hydra.initialize_config_dir(
         config_dir=str(Path(__file__).parent.joinpath("sim_demo_collector/config")),
         version_base=None
     ):
-        cfg = hydra.compose(config_name="config", overrides=[f"task={task}"])
+        cfg = hydra.compose(config_name="config", overrides=[f"task={task}", f"runner.device={device}"])
         runner = hydra.utils.instantiate(cfg.runner)
         runner.run(checkpoint, seed)
 
