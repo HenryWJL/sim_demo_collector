@@ -12,7 +12,7 @@ use_mask_obs: true
 flatten_obs: false
 image_size: [84, 84]
 controller: OSC_POSE
-delta_action: false
+delta_action: ${task.delta_action}
 control_freq: 20
 render_mode: rgb_array
 render_camera: agentview

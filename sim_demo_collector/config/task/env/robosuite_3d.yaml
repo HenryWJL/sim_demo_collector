@@ -16,7 +16,7 @@ num_points: ${task.num_points}
 bounding_boxes: ${task.bounding_boxes}
 normalize_pc: true
 controller: OSC_POSE
-delta_action: false
+delta_action: ${task.delta_action}
 control_freq: 20
 render_mode: rgb_array
 render_camera: agentview
