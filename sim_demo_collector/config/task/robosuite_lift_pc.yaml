@@ -21,5 +21,5 @@ bounding_boxes:
     lower_bound: [-0.5, -0.5, 0.0]
     upper_bound: [0.5, 0.5, 0.5]
 delta_action: false
-max_episode_steps: 200
+max_episode_steps: 100
 num_episodes: 10

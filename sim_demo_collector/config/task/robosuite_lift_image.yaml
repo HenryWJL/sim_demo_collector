@@ -13,5 +13,5 @@ obs_keys:
 - robot0_eef_quat
 - robot0_gripper_qpos
 delta_action: false
-max_episode_steps: 200
+max_episode_steps: 100
 num_episodes: 50
