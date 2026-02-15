@@ -21,6 +21,7 @@ except ImportError:
         raise ImportError("Please ensure version of gym>=0.26.0 to use the GymWrapper.")
     
 import robosuite as suite
+import mimicgen
 from omegaconf import ListConfig
 from typing import Optional, Union, Tuple, Literal, List, Dict
 from robosuite.controllers import load_controller_config
