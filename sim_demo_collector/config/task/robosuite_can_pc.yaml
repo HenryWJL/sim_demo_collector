@@ -12,7 +12,7 @@ obs_keys:
 - robot0_eef_pos
 - robot0_eef_quat
 - robot0_gripper_qpos
-num_points: 512
+num_points: 1024
 bounding_boxes:
   agentview:
     lower_bound: [-0.5, -0.2, 0.0]
@@ -22,4 +22,4 @@ bounding_boxes:
     upper_bound: [0.5, 0.5, 0.5]
 delta_action: false
 max_episode_steps: 200
-num_episodes: 40
+num_episodes: 50
