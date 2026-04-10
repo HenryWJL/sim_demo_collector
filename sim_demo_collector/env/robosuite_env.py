@@ -145,12 +145,16 @@ class RobosuiteEnv(gym.Env):
             self.observation_space = spaces.Dict({
                 key: get_box_space(obs[key]) for key in obs.keys()
             })
-        low, high = self.env.action_spec
+        if delta_action:
+            action_dim = 7
+        else:
+            action_dim = 10
+        high = np.ones((action_dim,))
+        low = -high
         self.action_space = spaces.Box(
             low=low,
             high=high,
             shape=low.shape,
-            dtype=low.dtype
         )
 
         self.rotation_transformer = RotationTransformer(from_rep='rotation_6d', to_rep='axis_angle')
