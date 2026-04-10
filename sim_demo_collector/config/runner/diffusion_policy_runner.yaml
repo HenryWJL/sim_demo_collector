@@ -16,10 +16,6 @@ env:
   max_episode_steps: ${task.max_episode_steps}
   reward_agg_method: max
 
-rotation_transformer:
-  _target_: sim_demo_collector.util.transform_util.RotationTransformer
-  from_rep: rotation_6d
-  to_rep: axis_angle
 shape_meta: ${runner.policy.shape_meta}
 max_episode_steps: ${task.max_episode_steps}
 num_episodes: ${task.num_episodes}
