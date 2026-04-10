@@ -17,7 +17,6 @@ class DiffusionPolicyRunner:
         self,
         env: gym.Env,
         policy: BaseImagePolicy,
-        rotation_transformer: RotationTransformer,
         shape_meta: Dict,
         max_episode_steps: Optional[int] = None,
         num_episodes: Optional[int] = 50,
@@ -25,7 +24,6 @@ class DiffusionPolicyRunner:
     ) -> None:
         self.env = env
         self.policy = policy
-        self.rotation_transformer = rotation_transformer
         self.shape_meta = shape_meta
         self.max_episode_steps = max_episode_steps
         self.num_episodes = num_episodes
@@ -82,15 +80,6 @@ class DiffusionPolicyRunner:
                 with torch.no_grad():
                     action = self.policy.predict_action(obs)['action']
                 action = action.detach().cpu().squeeze(0).numpy()
-                if action.shape[1] == 10:
-                    # When using absolute actions, diffusion policy returns 6d rotations.
-                    # Here, we need to transform 6d rotations into the rotation type that
-                    # is accepted by the environment.
-                    pos = action[..., :3]
-                    rot = action[..., 3:9]
-                    gripper = action[..., [-1]]
-                    rot = self.rotation_transformer.forward(rot)
-                    action = np.concatenate([pos, rot, gripper], axis=-1)
                 obs, _, done, info = self.env.step(action)
                 self.env.render()
                 done = np.all(done)
