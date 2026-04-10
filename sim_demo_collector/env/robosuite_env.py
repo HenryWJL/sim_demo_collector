@@ -31,6 +31,7 @@ from robosuite.utils.camera_utils import (
     get_camera_extrinsic_matrix
 )
 from sim_demo_collector.util.pc_util import pc_normalize, depth2pc
+from sim_demo_collector.util.transform_util import RotationTransformer
 
 
 def get_box_space(sample: np.ndarray) -> spaces.Box:
@@ -152,6 +153,7 @@ class RobosuiteEnv(gym.Env):
             dtype=low.dtype
         )
 
+        self.rotation_transformer = RotationTransformer(from_rep='rotation_6d', to_rep='axis_angle')
         self.seed_state_map = {}
         self.task_completion_hold_count = -1
 
@@ -261,6 +263,15 @@ class RobosuiteEnv(gym.Env):
         return None
 
     def step(self, action: np.ndarray) -> Tuple:
+        if action.shape[0] == 10:
+            # When using absolute actions, diffusion policy returns 6d rotations.
+            # Here, we need to transform 6d rotations into the rotation type that
+            # is accepted by the environment.
+            pos = action[:3]
+            rot = action[3:9]
+            gripper = action[[-1]]
+            rot = self.rotation_transformer.forward(rot)
+            action = np.concatenate([pos, rot, gripper], axis=0)
         raw_obs, reward, _, info = self.env.step(action)
         obs = self._extract_obs(raw_obs)
         if self.flatten_obs:
